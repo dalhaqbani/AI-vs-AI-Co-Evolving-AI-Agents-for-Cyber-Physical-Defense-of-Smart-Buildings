@@ -1,0 +1,106 @@
+:root {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;
+  color: #15233b;
+  background: #f4f7fb;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; }
+button { font: inherit; }
+
+main {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 40px 24px 64px;
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 28px;
+}
+
+h1 { margin: 4px 0 8px; font-size: clamp(2rem, 5vw, 3.4rem); }
+h2 { margin: 0; }
+header p { margin: 0; color: #60708a; }
+.eyebrow { color: #176b87; font-weight: 800; text-transform: uppercase; letter-spacing: .12em; }
+
+.connection {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  background: white;
+  padding: 12px 16px;
+  border-radius: 999px;
+  box-shadow: 0 8px 30px #18385a12;
+  white-space: nowrap;
+}
+
+.dot { width: 10px; height: 10px; background: #19a266; border-radius: 50%; }
+.dot.offline { background: #d63b42; }
+
+.summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.summary div, .card {
+  background: white;
+  border: 1px solid #dce5f0;
+  border-radius: 18px;
+  box-shadow: 0 10px 32px #18385a0d;
+}
+
+.summary div { padding: 18px 20px; display: flex; flex-direction: column; }
+.summary strong { font-size: 1.5rem; }
+.summary span, .metrics span { color: #6c7890; font-size: .86rem; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 18px; }
+.card { padding: 20px; border-top: 5px solid #1f8ca8; }
+.card.warning { border-top-color: #e29b24; }
+.card.critical { border-top-color: #d63b42; }
+.card-title { display: flex; align-items: center; justify-content: space-between; }
+
+.badge {
+  border-radius: 999px;
+  padding: 5px 9px;
+  color: #087747;
+  background: #e5f7ef;
+  font-size: .76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.badge.warning { color: #855900; background: #fff1ce; }
+.badge.critical { color: #a1262c; background: #ffe7e8; }
+
+/* auto-fit instead of a fixed 3 columns: cards show 1 metric (lock, fan,
+   button, motion) or 2 (dht22 temp+humidity), a fixed 3-column grid left
+   empty columns on every single-metric card */
+.metrics { display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 1fr)); gap: 8px; margin: 22px 0; }
+.metrics p { margin: 0; display: flex; flex-direction: column; gap: 3px; }
+.metrics strong { font-size: 1.2rem; }
+.alert { background: #fff0f1; color: #a1262c; padding: 10px 12px; border-radius: 10px; }
+.test-label { color: #a1262c; font-weight: 750; }
+
+button {
+  width: 100%;
+  border: 0;
+  border-radius: 10px;
+  padding: 11px 14px;
+  color: white;
+  background: #176b87;
+  cursor: pointer;
+  font-weight: 750;
+}
+button:hover { background: #11566e; }
+.empty { text-align: center; color: #6c7890; padding: 50px; }
+
+@media (max-width: 700px) {
+  header { align-items: flex-start; flex-direction: column; }
+  .summary { grid-template-columns: 1fr; }
+}
+
