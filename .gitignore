@@ -1,3 +1,23 @@
+# ---------------------------------------------------------------------------
+# Project-specific — add these BEFORE committing firmware/config.h for real.
+# ---------------------------------------------------------------------------
+
+# Firmware secrets (Wi-Fi credentials, broker IP) — never commit this file.
+firmware/config.h
+
+# Node / React (web dashboard)
+node_modules/
+web/node_modules/
+
+# SQLite database created at runtime
+*.db
+*.sqlite
+*.sqlite3
+
+# ---------------------------------------------------------------------------
+# Below: standard Python .gitignore template (unchanged)
+# ---------------------------------------------------------------------------
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
