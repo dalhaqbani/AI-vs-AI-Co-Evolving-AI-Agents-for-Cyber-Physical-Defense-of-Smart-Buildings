@@ -130,7 +130,7 @@ Fill in your real Wi-Fi and MQTT credentials (must match `.env`), then flash to 
 | CICIoT2023 | IoT attack traffic (network layer) | [UNB CIC IoT Dataset 2023](https://www.unb.ca/cic/datasets/iotdataset-2023.html) |
 | CASAS | Smart-home motion/door/temperature sensor data | [CASAS Datasets — WSU](https://casas.wsu.edu/datasets/) |
 | TON_IoT | IoT/IIoT telemetry + network intrusion data | [TON_IoT Datasets — UNSW Research](https://research.unsw.edu.au/projects/toniot-datasets) |
-| Ghost in the Building | Non-invasive spoofing / covert attacks on automated buildings | [ScienceDirect paper](https://www.sciencedirect.com/science/article/pii/S2666281725000198) *(verify before publishing)* |
+| Ghost in the Building | Non-invasive spoofing / covert attacks on automated buildings | [ScienceDirect paper](https://github.com/BACS-forensics/The-ghost-in-the-building)  |
 | Bristol | Multi-sensor, multi-device smart building indoor environmental data (6 months, 8 IoT devices — temp, humidity, pressure, gas, light, accelerometer) | [University of Bristol Data Repository](https://data.bris.ac.uk/data/dataset/fwlmb11wni392kodtyljkw4n2) |
 
 ### Cleaned datasets
