@@ -1,4 +1,4 @@
-// Copy this file to config.h and fill in your real values.
+/ Copy this file to config.h and fill in your real values.
 //
 // config.h is listed in .gitignore, so your Wi-Fi password and broker
 // address never get committed to git history. If you ever see config.h
@@ -9,3 +9,5 @@
 #define WIFI_PASSWORD "YOUR_WIFI_PASSWORD"
 #define MQTT_HOST     "192.168.1.100"   // LAN IP of the machine running the broker
 #define MQTT_PORT     1883
+#define MQTT_USERNAME "YOUR_MQTT_USERNAME"
+#define MQTT_PASSWORD "YOUR_MQTT_PASSWORD"
