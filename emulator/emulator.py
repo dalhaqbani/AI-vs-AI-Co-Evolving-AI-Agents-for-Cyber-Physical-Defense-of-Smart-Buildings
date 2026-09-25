@@ -1,6 +1,6 @@
 """Publish telemetry for the 5 real smart-building components.
 
-Stands in for Sarah's Arduino firmware until real hardware is wired up and
+Stands in for Arduino firmware until real hardware is wired up and
 publishing on its own. Same topics, same payload shape as the real thing,
 so nothing downstream (backend, database, dashboard) needs to change when
 you swap this container out for the real device.
@@ -8,10 +8,7 @@ you swap this container out for the real device.
 Once real hardware starts publishing a given component, EXCLUDE that
 component here so both don't publish to the same topic at once. Two
 publishers on one topic doesn't error, MQTT allows it, it just interleaves
-real and fake readings with no way to tell them apart downstream. Example:
-real temp_1 is live, the other 4 are still emulated:
-
-    EXCLUDE_COMPONENTS=temp_1 docker compose up emulator
+real and fake readings with no way to tell them apart downstream.
 """
 
 import json
@@ -24,6 +21,8 @@ import paho.mqtt.client as mqtt
 
 MQTT_HOST = os.getenv("MQTT_HOST", "localhost")
 MQTT_PORT = int(os.getenv("MQTT_PORT", "1883"))
+MQTT_USERNAME = os.getenv("MQTT_USERNAME")
+MQTT_PASSWORD = os.getenv("MQTT_PASSWORD")
 PUBLISH_INTERVAL = float(os.getenv("PUBLISH_INTERVAL", "2"))
 ANOMALY_EVERY = int(os.getenv("ANOMALY_EVERY", "12"))
 EXCLUDE_COMPONENTS = {
@@ -103,6 +102,11 @@ def on_message(client, userdata, message):
 client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id="emulator")
 client.on_connect = on_connect
 client.on_message = on_message
+
+if MQTT_USERNAME and MQTT_PASSWORD:
+    client.username_pw_set(MQTT_USERNAME, MQTT_PASSWORD)
+else:
+    print("WARNING: MQTT_USERNAME/MQTT_PASSWORD not set, connecting without auth")
 
 while True:
     try:
