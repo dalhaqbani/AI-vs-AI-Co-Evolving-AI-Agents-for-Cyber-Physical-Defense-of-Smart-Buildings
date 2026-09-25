@@ -24,34 +24,41 @@
 ---
 
 ## 🏗️ Architecture
+## 🏗️ Architecture
 
-                    ┌─────────────────────────────┐
-                    │      🧠 Defender (planned)    │
-                    │  Detect model + Respond RL    │
-                    │  (2-layer: network watchdog + │
-                    │  physical consistency check)  │
-                    └──────────────┬─────────────────┘
-                                   │ response commands
-                                   ▼
- ┌──────────────────┐      MQTT       ┌──────────────┐      ┌──────────────┐
- │  Physical Testbed  │ ◀───────────  │  MQTT Broker  │ ◀───▶│   Backend    │
- │  (Wemos D1 +       │ ───────────▶  │ (Mosquitto,   │      │ (FastAPI +   │
- │   sensors/actuators)│   telemetry   │  authenticated)│      │  SQLite)     │
- └──────────────────┘                 └──────────────┘      └──────┬───────┘
-                                              ▲                     │
-                                              │ attack traffic      ▼
-                                   ┌──────────┴─────────────┐  ┌──────────────┐
-                                   │   😈 Attacker Agent      │  │  Dashboard   │
-                                   │  (planned) PPO/RL —      │  │   (React)    │
-                                   │  spoofing, replay,       │  └──────────────┘
-                                   │  freeze, drift, etc.     │
-                                   └──────────────────────────┘
+```mermaid
+graph TB
+    subgraph AI["🤖 AI Layer (planned)"]
+        Defender["🛡️ Defender<br/>Detect + Respond RL<br/>(network watchdog +<br/>physical consistency check)"]
+        Attacker["😈 Attacker Agent<br/>PPO/RL<br/>(spoofing, replay, freeze, drift...)"]
+    end
 
+    subgraph Infra["🏗️ Pipeline Infrastructure"]
+        Testbed["🔩 Physical Testbed<br/>Wemos D1 + sensors/actuators"]
+        Broker["📡 MQTT Broker<br/>Mosquitto, authenticated"]
+        Backend["⚙️ Backend<br/>FastAPI + SQLite"]
+        Dashboard["🖥️ Dashboard<br/>React"]
+    end
 
+    Testbed -- telemetry --> Broker
+    Broker -- commands --> Testbed
+    Broker <--> Backend
+    Backend --> Dashboard
+
+    Attacker -. attack traffic .-> Broker
+    Defender -. response commands .-> Broker
+
+    classDef defender fill:#1e3a5f,stroke:#4a9eff,color:#fff
+    classDef attacker fill:#4a1e1e,stroke:#ff4a4a,color:#fff
+    classDef infra fill:#1a1a1a,stroke:#888,color:#fff
+
+    class Defender defender
+    class Attacker attacker
+    class Testbed,Broker,Backend,Dashboard infra
+```
 
 > **Note:** the Attacker and Defender agents are design-stage components at this point in the project. Per the pipeline-first principle, the hardware → MQTT → backend → dashboard pipeline is built and secured first; the AI layers above connect into it once infrastructure is validated.
 
-An **emulator** container stands in for any component not yet wired up in hardware, publishing to the same topics with the same payload shape — nothing downstream needs to change when real hardware comes online.
 
 ---
 
