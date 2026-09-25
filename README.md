@@ -17,7 +17,7 @@
 
 ## 📖 Overview
 
-**Hisn** (SE499 Capstone — Prince Sultan University) is a senior software engineering project that builds a real smart-building IoT testbed where an **attacker agent** and a **defender agent** co-evolve against each other. Unlike most cyber-physical security research that stops at simulation, every attack here can trigger **measurable physical effects** on real hardware — a locked door actually unlocking, a fan actually turning on, a sensor actually reporting a fake reading.
+**Hisn** (SE499 — Prince Sultan University) is a senior project that builds a real smart-building IoT testbed where an **attacker agent** and a **defender agent** co-evolve against each other. Unlike most cyber-physical security research that stops at simulation, every attack here can trigger **measurable physical effects** on real hardware — a locked door actually unlocking, a fan actually turning on, a sensor actually reporting a fake reading.
 
 > **Core claim:** a defender trained through co-evolution against an adaptive attacker generalizes to unseen attacks better than a defender trained on static attack patterns — validated on real hardware, not simulation alone.
 
