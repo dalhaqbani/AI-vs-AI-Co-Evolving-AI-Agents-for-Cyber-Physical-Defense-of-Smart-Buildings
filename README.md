@@ -24,7 +24,6 @@
 ---
 
 ## 🏗️ Architecture
-## 🏗️ Architecture
 
 ```mermaid
 graph TB
@@ -59,6 +58,7 @@ graph TB
 
 > **Note:** the Attacker and Defender agents are design-stage components at this point in the project. Per the pipeline-first principle, the hardware → MQTT → backend → dashboard pipeline is built and secured first; the AI layers above connect into it once infrastructure is validated.
 
+An **emulator** container stands in for any component not yet wired up in hardware, publishing to the same topics with the same payload shape — nothing downstream needs to change when real hardware comes online.
 
 ---
 
@@ -103,16 +103,43 @@ docker compose up --build
 | ⚙️ Backend API | http://localhost:8000 |
 | ❤️ Health check | http://localhost:8000/health |
 
-### 4. Real hardware (optional)
+### 4. Real hardware
 ```bash
 copy firmware\config.h.example firmware\config.h   # Windows
 ```
 Fill in your real Wi-Fi and MQTT credentials (must match `.env`), then flash to the board via Arduino IDE.
 
-> ⚠️ If real hardware is publishing a component, exclude it from the emulator so both don't publish to the same topic:
+> ⚠️ Real hardware currently covers all 5 components, so the emulator is fully excluded in `docker-compose.yml`:
 > ```bash
-> EXCLUDE_COMPONENTS=temp_1 docker compose up emulator
+> EXCLUDE_COMPONENTS: "temp_1,motion_1,lock_1,fan_1,button_1"
 > ```
+> If a component's hardware ever goes offline and you need the emulator to fill in for just that one, override at runtime, e.g.:
+> ```bash
+> EXCLUDE_COMPONENTS=motion_1,lock_1,fan_1,button_1 docker compose up emulator
+> ```
+> (excluding everything except `temp_1`, so only the DHT22 gets emulated while the rest stay on real hardware)
+
+---
+
+## 📊 Datasets
+
+### Original (public) datasets
+
+| Dataset | Used for | Source |
+|---|---|---|
+| CICIoT2023 | IoT attack traffic (network layer) | [UNB CIC IoT Dataset 2023](https://www.unb.ca/cic/datasets/iotdataset-2023.html) |
+| CASAS | Smart-home motion/door/temperature sensor data | [CASAS Datasets — WSU](https://casas.wsu.edu/datasets/) |
+| TON_IoT | IoT/IIoT telemetry + network intrusion data | [TON_IoT Datasets — UNSW Research](https://research.unsw.edu.au/projects/toniot-datasets) |
+| Ghost in the Building | Non-invasive spoofing / covert attacks on automated buildings | [ScienceDirect paper](https://www.sciencedirect.com/science/article/pii/S2666281725000198) *(verify before publishing)* |
+| Bristol | Multi-sensor, multi-device smart building indoor environmental data (6 months, 8 IoT devices — temp, humidity, pressure, gas, light, accelerometer) | [University of Bristol Data Repository](https://data.bris.ac.uk/data/dataset/fwlmb11wni392kodtyljkw4n2) |
+
+### Cleaned datasets
+
+Cleaned and preprocessed versions (`ciciot2023_filtered_clean.csv`, CASAS balanced/unbalanced subsets, Ghost in the Building baseline + flagged-window files) are stored in the team's shared Google Drive:
+
+🔗 **[Cleaned datasets — Google Drive](https://drive.google.com/drive/folders/10eRLsFsIraQ7FwunxqSjagztOTh8uccY?usp=drive_link)**
+
+> Real hardware episodes are reserved for validation, not bulk training (a few hundred to ~1,400 episodes over the project). These public datasets carry the training volume. Real and synthetic samples are tagged separately and never blended in reported numbers.
 
 ---
 
@@ -130,6 +157,19 @@ Test cases, results, and known issues are documented per sprint — see the spri
 
 ---
 
+## 👥 Team
+
+| Member | Role |
+|---|---|
+| Deem | AI/Team Lead — Attacker Agent & Defender Response Layer & hardware setup|
+| Mariam | AI — Defender/Detect Model & Defender Response Layer |
+| Lama | Cybersecurity — Attack Research & Hardware |
+| Sarah | Cybersecurity — Hardware, MQTT |
+| Zaina | Hybrid — Backend, Dashboard, Documentation |
+
+
+
+---
 
 ## 📄 License
 
