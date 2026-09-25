@@ -1,49 +1,56 @@
 /*
-  Smart-Building Sensor Node — ESP32 firmware
-  ============================================
-  Publishes telemetry that matches backend/main.py's Pydantic schema
-  EXACTLY: same field names, same literal strings for component_type and
-  state values. If these drift from main.py, the backend silently drops
-  the message and logs it, it does not throw a visible error. Check the
-  backend's console output the first time you flash this.
-
-  ASSUMPTION, confirm before treating this as final:
-  This assumes ONE ESP32 dev board drives all 5 components directly
-  (it has built-in Wi-Fi, unlike a plain Arduino Uno). If your actual
-  hardware is an Uno talking to a separate ESP8266/ESP32 Wi-Fi module over
-  serial, this needs restructuring, tell Claude/your team and it gets
-  rewritten around that architecture instead.
-
+  Smart-Building Sensor Node — ESP8266 (Wemos D1) firmware
+  ==========================================================
   Libraries required (Arduino IDE: Sketch > Include Library > Manage Libraries):
-    - PubSubClient        by Nick O'Leary
-    - DHT sensor library  by Adafruit
-    - Adafruit Unified Sensor   (auto-installed as a dependency of the above)
-    - ESP32Servo          by Kevin Harrington / madhephaestus
-      (NOT the built-in "Servo" library, that one does not work reliably
-      with the ESP32's timers)
+    - PubSubClient   by Nick O'Leary
+    - DHTesp         by beegee_tokyo   (NOT the Adafruit DHT library —
+      the Adafruit one timed out reliably on this board during testing;
+      DHTesp is written for ESP8266/ESP32 timing and is what actually
+      worked)
+    - Servo is the built-in Arduino "Servo" library — already confirmed
+      working on this board, no extra install needed
 
-  Board setting: Tools > Board > ESP32 Arduino > (your specific ESP32 board)
+  Board setting: Tools > Board > LOLIN(WEMOS) D1 R2 & mini
 
   Setup: copy config.h.example (same folder as this .ino) to config.h and
-  fill in your real Wi-Fi and broker details. config.h is gitignored, so it
-  never gets committed, keep it that way.
+  fill in your real Wi-Fi and broker details
+
+  PIN NOTES — D8 (GPIO15) is used for the push button here. It needs to
+  read LOW at boot. INPUT_PULLUP only takes effect after setup() runs
+  (after boot), so this is normally safe, but keep it in mind if boot
+  behaves oddly.
+  If it causes problems, the safe fallback pins are D1, D2, D5, D6, D7
+  (already proven reliable in testing) — swap and update PIN_PUSH_BUTTON
+  accordingly.
+
+  RELAY LOGIC — the relay/fan's actual on/off polarity was still being
+  confirmed during hardware bring-up (early testing suggested it may be
+  active-LOW, i.e. LOW energizes it, but this was not fully confirmed).
+  FAN_ON / FAN_OFF below are defined as named constants for exactly this
+  reason — if the fan behaves backwards once this is flashed, flip the
+  two values in the FAN_ON / FAN_OFF #defines below and re-upload. Nothing
+  else in the file needs to change.
 */
 
-#include <WiFi.h>
+#include <ESP8266WiFi.h>
 #include <PubSubClient.h>
-#include <DHT.h>
-#include <ESP32Servo.h>
+#include <DHTesp.h>
+#include <Servo.h>
 #include <time.h>
 #include "config.h"   // WIFI_SSID, WIFI_PASSWORD, MQTT_HOST, MQTT_PORT — copy config.h.example to config.h and fill in real values, config.h is gitignored on purpose
 
 // ---------------------------------------------------------------------------
-// Pin map. Adjust to match your actual wiring.
+// Pin map — matches the confirmed working wiring.
 // ---------------------------------------------------------------------------
-const int PIN_DHT22       = 4;
-const int PIN_PIR         = 5;
-const int PIN_SERVO_LOCK  = 18;
-const int PIN_FAN_LED     = 19;
-const int PIN_PUSH_BUTTON = 21;
+const int PIN_FAN         = D1;  // relay signal
+const int PIN_PIR         = D2;
+const int PIN_DHT22       = D5;
+const int PIN_SERVO_LOCK  = D6;
+const int PIN_PUSH_BUTTON = D8;
+
+// Flip these two if the relay's on/off turns out backwards once tested.
+#define FAN_ON  HIGH
+#define FAN_OFF LOW
 
 // ---------------------------------------------------------------------------
 // Component IDs. These must match component_id values the backend and
@@ -58,12 +65,12 @@ const char* ID_BUTTON = "button_1";
 const unsigned long PUBLISH_INTERVAL_MS = 2000;
 const unsigned long BUTTON_DEBOUNCE_MS  = 50;
 
-DHT dht(PIN_DHT22, DHT22);
+DHTesp dht;
 Servo lockServo;
 WiFiClient wifiClient;
 PubSubClient mqtt(wifiClient);
 
-bool lockIsLocked = true;       // servo angle 0 = locked, 90 = unlocked; adjust to your hardware
+bool lockIsLocked = true;       // servo angle 0 = locked, 90 = unlocked;
 bool fanIsOn = false;
 bool lastButtonReading = HIGH;  // INPUT_PULLUP: idle = HIGH, pressed = LOW
 bool buttonState = false;       // debounced state, true = pressed
@@ -71,9 +78,9 @@ unsigned long lastDebounceTime = 0;
 unsigned long lastPublish = 0;
 
 // ---------------------------------------------------------------------------
-// Timestamp: ESP32 has no real-time clock of its own, so we sync over NTP
-// in connectWifi() and read the synced time here. Format matches what
-// main.py expects: "2026-09-10T12:00:00+00:00".
+// Timestamp: the D1 board has no real-time clock of its own, so we sync
+// over NTP in connectWifi() and read the synced time here. Format matches
+// what main.py expects: "2026-09-10T12:00:00+00:00".
 // ---------------------------------------------------------------------------
 String isoTimestamp() {
   time_t now;
@@ -152,6 +159,12 @@ void publishButton(bool pressed) {
 // building/{component_id}/commands. This node only reacts to commands
 // addressed to its own lock and fan, the two components it can actuate.
 // ---------------------------------------------------------------------------
+void setFan(bool on) {
+  digitalWrite(PIN_FAN, on ? FAN_ON : FAN_OFF);
+  fanIsOn = on;
+  publishFan(on);
+}
+
 void onMqttMessage(char* topic, byte* payloadBytes, unsigned int length) {
   char payload[256];
   unsigned int copyLen = length < sizeof(payload) - 1 ? length : sizeof(payload) - 1;
@@ -182,13 +195,9 @@ void onMqttMessage(char* topic, byte* payloadBytes, unsigned int length) {
 
   if (topicStr == fanTopic) {
     if (payloadStr.indexOf("\"safe_mode\"") >= 0) {
-      digitalWrite(PIN_FAN_LED, LOW);
-      fanIsOn = false;
-      publishFan(false);
+      setFan(false);
     } else if (payloadStr.indexOf("\"normal_mode\"") >= 0) {
-      digitalWrite(PIN_FAN_LED, HIGH);
-      fanIsOn = true;
-      publishFan(true);
+      setFan(true);
     }
   }
 }
@@ -218,8 +227,8 @@ void connectWifi() {
 void connectMqtt() {
   while (!mqtt.connected()) {
     Serial.print("Connecting to MQTT broker...");
-    String clientId = "esp32-node-" + String(random(0xffff), HEX);
-    if (mqtt.connect(clientId.c_str())) {
+    String clientId = "d1-node-" + String(random(0xffff), HEX);
+    if (mqtt.connect(clientId.c_str(), MQTT_USERNAME, MQTT_PASSWORD)) {
       Serial.println(" connected");
       mqtt.subscribe((String("building/") + ID_LOCK + "/commands").c_str());
       mqtt.subscribe((String("building/") + ID_FAN + "/commands").c_str());
@@ -233,11 +242,13 @@ void connectMqtt() {
 }
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(9600);
   pinMode(PIN_PIR, INPUT);
-  pinMode(PIN_FAN_LED, OUTPUT);
+  pinMode(PIN_FAN, OUTPUT);
   pinMode(PIN_PUSH_BUTTON, INPUT_PULLUP);
-  dht.begin();
+  digitalWrite(PIN_FAN, FAN_OFF);
+
+  dht.setup(PIN_DHT22, DHTesp::DHT22);
   lockServo.attach(PIN_SERVO_LOCK);
   lockServo.write(0); // start locked
 
@@ -272,12 +283,14 @@ void loop() {
   if (nowMs - lastPublish >= PUBLISH_INTERVAL_MS) {
     lastPublish = nowMs;
 
-    float humidity = dht.readHumidity();
-    float temperature = dht.readTemperature();
-    if (!isnan(humidity) && !isnan(temperature)) {
+    delay(dht.getMinimumSamplingPeriod());
+    float humidity = dht.getHumidity();
+    float temperature = dht.getTemperature();
+    if (dht.getStatus() == 0) {
       publishDht22(temperature, humidity);
     } else {
-      Serial.println("DHT22 read failed, skipping this cycle");
+      Serial.print("DHT22 read failed: ");
+      Serial.println(dht.getStatusString());
     }
 
     publishPir(digitalRead(PIN_PIR) == HIGH);
