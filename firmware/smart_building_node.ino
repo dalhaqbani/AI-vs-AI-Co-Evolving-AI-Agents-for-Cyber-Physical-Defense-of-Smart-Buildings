@@ -1,66 +1,21 @@
-/*
-  Smart-Building Sensor Node — ESP8266 (Wemos D1) firmware
-  ==========================================================
-  Libraries required (Arduino IDE: Sketch > Include Library > Manage Libraries):
-    - PubSubClient   by Nick O'Leary
-    - DHTesp         by beegee_tokyo   (NOT the Adafruit DHT library —
-      the Adafruit one timed out reliably on this board during testing;
-      DHTesp is written for ESP8266/ESP32 timing and is what actually
-      worked)
-    - Servo is the built-in Arduino "Servo" library — already confirmed
-      working on this board, no extra install needed
-
-  Board setting: Tools > Board > LOLIN(WEMOS) D1 R2 & mini
-
-  Setup: copy config.h.example (same folder as this .ino) to config.h and
-  fill in your real Wi-Fi and broker details
-
-  PIN NOTES — D8 (GPIO15) is used for the push button here. It needs to
-  read LOW at boot. INPUT_PULLUP only takes effect after setup() runs
-  (after boot), so this is normally safe, but keep it in mind if boot
-  behaves oddly.
-  If it causes problems, the safe fallback pins are D1, D2, D5, D6, D7
-  (already proven reliable in testing) — swap and update PIN_PUSH_BUTTON
-  accordingly.
-
-  RELAY LOGIC — the relay/fan's actual on/off polarity was still being
-  confirmed during hardware bring-up (early testing suggested it may be
-  active-LOW, i.e. LOW energizes it, but this was not fully confirmed).
-  FAN_ON / FAN_OFF below are defined as named constants for exactly this
-  reason — if the fan behaves backwards once this is flashed, flip the
-  two values in the FAN_ON / FAN_OFF #defines below and re-upload. Nothing
-  else in the file needs to change.
-*/
-
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 #include <DHTesp.h>
 #include <Servo.h>
 #include <time.h>
-#include "config.h"   // WIFI_SSID, WIFI_PASSWORD, MQTT_HOST, MQTT_PORT — copy config.h.example to config.h and fill in real values, config.h is gitignored on purpose
+#include "config.h"
 
-// ---------------------------------------------------------------------------
-// Pin map — matches the confirmed working wiring.
-// ---------------------------------------------------------------------------
-const int PIN_FAN         = D1;  // relay signal
-const int PIN_PIR         = D2;
 const int PIN_DHT22       = D5;
+const int PIN_PUSH_BUTTON = D7;
+const int PIN_PIR         = D2;
 const int PIN_SERVO_LOCK  = D6;
-const int PIN_PUSH_BUTTON = D8;
+const int PIN_FAN         = D1;
 
-// Flip these two if the relay's on/off turns out backwards once tested.
-#define FAN_ON  HIGH
-#define FAN_OFF LOW
-
-// ---------------------------------------------------------------------------
-// Component IDs. These must match component_id values the backend and
-// dashboard expect: temp_1, motion_1, lock_1, fan_1, button_1.
-// ---------------------------------------------------------------------------
 const char* ID_DHT22  = "temp_1";
+const char* ID_BUTTON = "button_1";
 const char* ID_PIR    = "motion_1";
 const char* ID_LOCK   = "lock_1";
 const char* ID_FAN    = "fan_1";
-const char* ID_BUTTON = "button_1";
 
 const unsigned long PUBLISH_INTERVAL_MS = 2000;
 const unsigned long BUTTON_DEBOUNCE_MS  = 50;
@@ -70,18 +25,14 @@ Servo lockServo;
 WiFiClient wifiClient;
 PubSubClient mqtt(wifiClient);
 
-bool lockIsLocked = true;       // servo angle 0 = locked, 90 = unlocked;
-bool fanIsOn = false;
-bool lastButtonReading = HIGH;  // INPUT_PULLUP: idle = HIGH, pressed = LOW
-bool buttonState = false;       // debounced state, true = pressed
-unsigned long lastDebounceTime = 0;
 unsigned long lastPublish = 0;
+bool lastButtonReading = HIGH;  // INPUT_PULLUP: idle = HIGH, pressed = LOW
+bool buttonState = false;
+unsigned long lastDebounceTime = 0;
+bool lastPirState = false;
+bool isLocked = true;   // matches lockServo.write(0) at boot
+bool fanOn = false;     // matches setFan(false) at boot
 
-// ---------------------------------------------------------------------------
-// Timestamp: the D1 board has no real-time clock of its own, so we sync
-// over NTP in connectWifi() and read the synced time here. Format matches
-// what main.py expects: "2026-09-10T12:00:00+00:00".
-// ---------------------------------------------------------------------------
 String isoTimestamp() {
   time_t now;
   time(&now);
@@ -92,12 +43,6 @@ String isoTimestamp() {
   return String(buf);
 }
 
-// ---------------------------------------------------------------------------
-// Manual JSON building instead of ArduinoJson. This skips a second library
-// and its heap overhead, worth avoiding once Wi-Fi, MQTT, and a servo are
-// all running on the same board at once. Every payload below must match
-// the corresponding Pydantic model in backend/main.py field for field.
-// ---------------------------------------------------------------------------
 void publish(const char* componentId, const char* payload) {
   char topic[64];
   snprintf(topic, sizeof(topic), "building/%s/telemetry", componentId);
@@ -115,6 +60,15 @@ void publishDht22(float temperature, float humidity) {
     "\"is_test\":false,\"data\":{\"temperature\":%.1f,\"humidity\":%.1f}}",
     ID_DHT22, isoTimestamp().c_str(), temperature, humidity);
   publish(ID_DHT22, payload);
+}
+
+void publishButton(bool pressed) {
+  char payload[200];
+  snprintf(payload, sizeof(payload),
+    "{\"component_id\":\"%s\",\"component_type\":\"push_button\",\"timestamp\":\"%s\","
+    "\"is_test\":false,\"data\":{\"state\":\"%s\"}}",
+    ID_BUTTON, isoTimestamp().c_str(), pressed ? "pressed" : "released");
+  publish(ID_BUTTON, payload);
 }
 
 void publishPir(bool motionDetected) {
@@ -144,24 +98,11 @@ void publishFan(bool on) {
   publish(ID_FAN, payload);
 }
 
-void publishButton(bool pressed) {
-  char payload[200];
-  snprintf(payload, sizeof(payload),
-    "{\"component_id\":\"%s\",\"component_type\":\"push_button\",\"timestamp\":\"%s\","
-    "\"is_test\":false,\"data\":{\"state\":\"%s\"}}",
-    ID_BUTTON, isoTimestamp().c_str(), pressed ? "pressed" : "released");
-  publish(ID_BUTTON, payload);
-}
-
-// ---------------------------------------------------------------------------
-// Command handling. backend/main.py's Command model sends
-// {"action": "...", "reason": "...", "source": "..."} on
-// building/{component_id}/commands. This node only reacts to commands
-// addressed to its own lock and fan, the two components it can actuate.
-// ---------------------------------------------------------------------------
+// Handles the NC-inverted relay logic. Always call this instead of
+// digitalWrite(PIN_FAN, ...) directly.
 void setFan(bool on) {
-  digitalWrite(PIN_FAN, on ? FAN_ON : FAN_OFF);
-  fanIsOn = on;
+  fanOn = on;
+  digitalWrite(PIN_FAN, on ? LOW : HIGH);
   publishFan(on);
 }
 
@@ -171,38 +112,43 @@ void onMqttMessage(char* topic, byte* payloadBytes, unsigned int length) {
   memcpy(payload, payloadBytes, copyLen);
   payload[copyLen] = '\0';
 
+  Serial.print("CMD received on ");
+  Serial.print(topic);
+  Serial.print(": ");
+  Serial.println(payload);
+
   String topicStr(topic);
   String payloadStr(payload);
-  Serial.print("CMD ");
-  Serial.print(topicStr);
-  Serial.print(" ");
-  Serial.println(payloadStr);
 
-  String lockTopic = String("building/") + ID_LOCK + "/commands";
-  String fanTopic  = String("building/") + ID_FAN + "/commands";
-
-  if (topicStr == lockTopic) {
+  if (topicStr.indexOf("lock_1") >= 0) {
     if (payloadStr.indexOf("\"unlock\"") >= 0) {
+      Serial.println("-> moving servo to 90 (unlock)");
       lockServo.write(90);
-      lockIsLocked = false;
-      publishLock(false);
+      isLocked = false;
+      publishLock(isLocked);
     } else if (payloadStr.indexOf("\"lock\"") >= 0) {
+      Serial.println("-> moving servo to 0 (lock)");
       lockServo.write(0);
-      lockIsLocked = true;
-      publishLock(true);
+      isLocked = true;
+      publishLock(isLocked);
+    } else {
+      Serial.println("-> payload didn't match \"unlock\" or \"lock\", no action");
     }
-  }
-
-  if (topicStr == fanTopic) {
-    if (payloadStr.indexOf("\"safe_mode\"") >= 0) {
-      setFan(false);
-    } else if (payloadStr.indexOf("\"normal_mode\"") >= 0) {
+  } else if (topicStr.indexOf("fan_1") >= 0) {
+    if (payloadStr.indexOf("\"normal_mode\"") >= 0) {
+      Serial.println("-> Fan ON");
       setFan(true);
+    } else if (payloadStr.indexOf("\"safe_mode\"") >= 0) {
+      Serial.println("-> Fan OFF");
+      setFan(false);
+    } else {
+      Serial.println("-> payload didn't match \"normal_mode\" or \"safe_mode\", no action");
     }
   }
 }
 
 void connectWifi() {
+  WiFi.setOutputPower(0);  // lowers WiFi TX power to reduce the current spike at connect
   Serial.print("Connecting to WiFi");
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   while (WiFi.status() != WL_CONNECTED) {
@@ -212,7 +158,6 @@ void connectWifi() {
   Serial.println(" connected");
   Serial.println(WiFi.localIP());
 
-  // NTP sync so isoTimestamp() returns real UTC time instead of 1970.
   configTime(0, 0, "pool.ntp.org", "time.nist.gov");
   Serial.print("Waiting for NTP time sync");
   time_t now = time(nullptr);
@@ -227,11 +172,19 @@ void connectWifi() {
 void connectMqtt() {
   while (!mqtt.connected()) {
     Serial.print("Connecting to MQTT broker...");
-    String clientId = "d1-node-" + String(random(0xffff), HEX);
-    if (mqtt.connect(clientId.c_str(), MQTT_USERNAME, MQTT_PASSWORD)) {
+    String clientId = "smart-building-full-" + String(random(0xffff), HEX);
+     if (mqtt.connect(clientId.c_str(), MQTT_USERNAME, MQTT_PASSWORD)) {
       Serial.println(" connected");
-      mqtt.subscribe((String("building/") + ID_LOCK + "/commands").c_str());
-      mqtt.subscribe((String("building/") + ID_FAN + "/commands").c_str());
+
+      String lockTopic = String("building/") + ID_LOCK + "/commands";
+      mqtt.subscribe(lockTopic.c_str());
+      Serial.print("Subscribed to ");
+      Serial.println(lockTopic);
+
+      String fanTopic = String("building/") + ID_FAN + "/commands";
+      mqtt.subscribe(fanTopic.c_str());
+      Serial.print("Subscribed to ");
+      Serial.println(fanTopic);
     } else {
       Serial.print(" failed, rc=");
       Serial.print(mqtt.state());
@@ -243,19 +196,25 @@ void connectMqtt() {
 
 void setup() {
   Serial.begin(9600);
-  pinMode(PIN_PIR, INPUT);
-  pinMode(PIN_FAN, OUTPUT);
-  pinMode(PIN_PUSH_BUTTON, INPUT_PULLUP);
-  digitalWrite(PIN_FAN, FAN_OFF);
 
   dht.setup(PIN_DHT22, DHTesp::DHT22);
+  pinMode(PIN_PUSH_BUTTON, INPUT_PULLUP);
+  pinMode(PIN_PIR, INPUT);
   lockServo.attach(PIN_SERVO_LOCK);
-  lockServo.write(0); // start locked
+  lockServo.write(0);
+  pinMode(PIN_FAN, OUTPUT);
+  digitalWrite(PIN_FAN, HIGH);  // energized -> NC open -> fan OFF at boot
+
+  Serial.println("DHT22 D5, button D7, PIR D2, servo D6, fan D1 (NC logic) - all ready");
 
   connectWifi();
   mqtt.setServer(MQTT_HOST, MQTT_PORT);
   mqtt.setCallback(onMqttMessage);
   connectMqtt();
+
+  // Publish initial states so the dashboard isn't stale
+  publishLock(isLocked);
+  publishFan(fanOn);
 }
 
 void loop() {
@@ -267,8 +226,7 @@ void loop() {
   }
   mqtt.loop();
 
-  // Debounce the button so one physical press doesn't publish a burst of
-  // spurious "pressed" events from mechanical switch bounce.
+  // Debounce the button
   bool reading = digitalRead(PIN_PUSH_BUTTON) == LOW;
   if (reading != lastButtonReading) {
     lastDebounceTime = millis();
@@ -279,11 +237,17 @@ void loop() {
   }
   lastButtonReading = reading;
 
+  // PIR: publish immediately on change
+  bool pirReading = digitalRead(PIN_PIR) == HIGH;
+  if (pirReading != lastPirState) {
+    lastPirState = pirReading;
+    publishPir(pirReading);
+  }
+
   unsigned long nowMs = millis();
   if (nowMs - lastPublish >= PUBLISH_INTERVAL_MS) {
     lastPublish = nowMs;
 
-    delay(dht.getMinimumSamplingPeriod());
     float humidity = dht.getHumidity();
     float temperature = dht.getTemperature();
     if (dht.getStatus() == 0) {
@@ -292,9 +256,5 @@ void loop() {
       Serial.print("DHT22 read failed: ");
       Serial.println(dht.getStatusString());
     }
-
-    publishPir(digitalRead(PIN_PIR) == HIGH);
-    publishLock(lockIsLocked);
-    publishFan(fanIsOn);
   }
 }
