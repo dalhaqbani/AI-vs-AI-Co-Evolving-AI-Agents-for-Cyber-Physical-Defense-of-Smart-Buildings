@@ -1,3 +1,4 @@
+
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 #include <DHTesp.h>
@@ -7,9 +8,9 @@
 
 const int PIN_DHT22       = D5;
 const int PIN_PUSH_BUTTON = D7;
-const int PIN_PIR         = D2;
+const int PIN_PIR         = D4;
 const int PIN_SERVO_LOCK  = D6;
-const int PIN_FAN         = D1;
+const int PIN_FAN         = D2;
 
 const char* ID_DHT22  = "temp_1";
 const char* ID_BUTTON = "button_1";
@@ -19,6 +20,7 @@ const char* ID_FAN    = "fan_1";
 
 const unsigned long PUBLISH_INTERVAL_MS = 2000;
 const unsigned long BUTTON_DEBOUNCE_MS  = 50;
+const unsigned long PIR_WARMUP_MS       = 60000;  // HC-SR501 needs ~60s to stabilize after power-up
 
 DHTesp dht;
 Servo lockServo;
@@ -30,6 +32,10 @@ bool lastButtonReading = HIGH;  // INPUT_PULLUP: idle = HIGH, pressed = LOW
 bool buttonState = false;
 unsigned long lastDebounceTime = 0;
 bool lastPirState = false;
+int motionCount = 0;
+unsigned long pirStartTime = 0;
+bool pirWarmedUp = false;
+unsigned long lastWarmupPrint = 0;
 bool isLocked = true;   // matches lockServo.write(0) at boot
 bool fanOn = false;     // matches setFan(false) at boot
 
@@ -135,14 +141,11 @@ void onMqttMessage(char* topic, byte* payloadBytes, unsigned int length) {
       Serial.println("-> payload didn't match \"unlock\" or \"lock\", no action");
     }
   } else if (topicStr.indexOf("fan_1") >= 0) {
-    if (payloadStr.indexOf("\"normal_mode\"") >= 0) {
-      Serial.println("-> Fan ON");
-      setFan(true);
-    } else if (payloadStr.indexOf("\"safe_mode\"") >= 0) {
-      Serial.println("-> Fan OFF");
-      setFan(false);
+    if (payloadStr.indexOf("\"safe_mode\"") >= 0) {
+      Serial.println(fanOn ? "-> Fan OFF (toggled via safe mode)" : "-> Fan ON (toggled via safe mode)");
+      setFan(!fanOn);
     } else {
-      Serial.println("-> payload didn't match \"normal_mode\" or \"safe_mode\", no action");
+      Serial.println("-> payload didn't match \"safe_mode\", no action");
     }
   }
 }
@@ -173,7 +176,7 @@ void connectMqtt() {
   while (!mqtt.connected()) {
     Serial.print("Connecting to MQTT broker...");
     String clientId = "smart-building-full-" + String(random(0xffff), HEX);
-     if (mqtt.connect(clientId.c_str(), MQTT_USERNAME, MQTT_PASSWORD)) {
+    if (mqtt.connect(clientId.c_str(), MQTT_USERNAME, MQTT_PASSWORD)) {
       Serial.println(" connected");
 
       String lockTopic = String("building/") + ID_LOCK + "/commands";
@@ -195,7 +198,7 @@ void connectMqtt() {
 }
 
 void setup() {
-  Serial.begin(9600);
+  Serial.begin(115200);
 
   dht.setup(PIN_DHT22, DHTesp::DHT22);
   pinMode(PIN_PUSH_BUTTON, INPUT_PULLUP);
@@ -205,7 +208,10 @@ void setup() {
   pinMode(PIN_FAN, OUTPUT);
   digitalWrite(PIN_FAN, HIGH);  // energized -> NC open -> fan OFF at boot
 
-  Serial.println("DHT22 D5, button D7, PIR D2, servo D6, fan D1 (NC logic) - all ready");
+  Serial.println("DHT22 D5, button D7, PIR D4, servo D6, fan D2 (NC logic) - all ready");
+
+  pirStartTime = millis();
+  Serial.println("PIR warming up for 60 seconds...");
 
   connectWifi();
   mqtt.setServer(MQTT_HOST, MQTT_PORT);
@@ -237,11 +243,28 @@ void loop() {
   }
   lastButtonReading = reading;
 
-  // PIR: publish immediately on change
-  bool pirReading = digitalRead(PIN_PIR) == HIGH;
-  if (pirReading != lastPirState) {
-    lastPirState = pirReading;
-    publishPir(pirReading);
+  // PIR: wait for warm-up, then publish immediately on change
+  unsigned long nowMillis = millis();
+  if (!pirWarmedUp) {
+    if (nowMillis - pirStartTime < PIR_WARMUP_MS) {
+      if (nowMillis - lastWarmupPrint >= 5000) {
+        lastWarmupPrint = nowMillis;
+        Serial.print("PIR warm-up: ");
+        Serial.print((nowMillis - pirStartTime) / 1000);
+        Serial.println("/60 seconds");
+      }
+    } else {
+      pirWarmedUp = true;
+      lastPirState = digitalRead(PIN_PIR) == HIGH;
+      Serial.println("PIR READY!");
+    }
+  } else {
+    bool pirReading = digitalRead(PIN_PIR) == HIGH;
+    if (pirReading != lastPirState) {
+      lastPirState = pirReading;
+      if (pirReading) motionCount++;
+      publishPir(pirReading);
+    }
   }
 
   unsigned long nowMs = millis();
