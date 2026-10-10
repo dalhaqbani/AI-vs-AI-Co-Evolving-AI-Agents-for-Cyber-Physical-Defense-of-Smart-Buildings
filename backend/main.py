@@ -108,6 +108,33 @@ class Command(BaseModel):
     action: str = Field(pattern=r"^(safe_mode|normal_mode|inspect|lock|unlock|reset)$")
 
 
+# ---------------------------------------------------------------------------
+# Command routing.
+#
+# The AI decides WHAT to do; this decides WHICH DEVICE does it. The firmware only
+# subscribes to building/lock_1/commands and building/fan_1/commands, so a command
+# published anywhere else (e.g. building/temp_1/commands) is silently lost.
+# ---------------------------------------------------------------------------
+ACTION_TARGET = {"safe_mode": "fan_1", "lock": "lock_1", "unlock": "lock_1"}
+
+
+def route_action(action: str | None) -> str | None:
+    """Device that performs an action, or None if no device can (inspect, reset...)."""
+    return ACTION_TARGET.get(action) if action else None
+
+
+def already_done(action: str, target: str) -> bool:
+    """The firmware's safe_mode TOGGLES the fan, so sending it to a fan that is
+    already on would switch it back off. Skip commands whose effect is already true."""
+    latest = {row["component_id"]: row for row in latest_per_component()}
+    state = latest.get(target, {}).get("data", {}).get("state")
+    return (action, state) in {
+        ("safe_mode", "on"),
+        ("lock", "locked"),
+        ("unlock", "unlocked"),
+    }
+
+
 def on_connect(client, userdata, flags, reason_code, properties):
     global mqtt_connected
     mqtt_connected = reason_code == 0
@@ -136,8 +163,9 @@ def on_message(client, userdata, message):
     decision = evaluate(reading.component_type, reading.data.model_dump()).to_dict()
     insert_reading(reading.model_dump(), decision)
 
-    if decision["action"]:
-        command_topic = f"building/{reading.component_id}/commands"
+    target = route_action(decision["action"])
+    if target and not already_done(decision["action"], target):
+        command_topic = f"building/{target}/commands"
         command = json.dumps(
             {
                 "action": decision["action"],
