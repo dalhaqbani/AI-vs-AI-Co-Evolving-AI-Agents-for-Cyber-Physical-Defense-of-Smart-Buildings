@@ -196,7 +196,7 @@ class EpisodeResult:
     actions: list               # (move,i1,i2) per tick, to replay undefended
 
 
-def run_episode(agent: Agent, defender, env: AttackerEnv, seed: int,
+def run_episode(agent: Agent, env: AttackerEnv, seed: int,
                 rec: RecordingDefender | None, ep_index: int) -> EpisodeResult:
     """One episode against the given (already-wired) defender env."""
     obs, _ = env.reset(seed=seed)
@@ -280,7 +280,7 @@ def harm_reduction(results: list[EpisodeResult], steps: int) -> dict:
     for r in results:
         env = make_env(NullDefender(), steps)
         replay = ReplayAgent(r.actions, "replay")
-        u = run_episode(replay, None, env, r.seed, None, r.episode)
+        u = run_episode(replay, env, r.seed, None, r.episode)
         undef += u.harm_defended
     reduction = (undef - defended)
     pct = (reduction / undef * 100.0) if undef else None
@@ -374,7 +374,7 @@ def main() -> None:
         move_counter: Counter = Counter()
         for ep in range(args.episodes):
             seed = args.seed_base + ep
-            r = run_episode(agent, rec, env, seed, rec, ep)
+            r = run_episode(agent, env, seed, rec, ep)
             results.append(r)
             for mv, valid in r.moves:
                 move_counter[MOVES[mv]] += 1
