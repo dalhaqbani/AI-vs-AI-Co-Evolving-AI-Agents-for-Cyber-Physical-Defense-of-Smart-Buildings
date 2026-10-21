@@ -1,0 +1,112 @@
+File: Train_Test_IoT_Garage_Door_clean.csv
+Rows: 19366  Columns: 7
+
+Column names and types:
+date             object
+time             object
+door_state       object
+sphone_signal    object
+label             int64
+type             object
+device           object
+
+Missing values (only columns with any):
+none
+
+Duplicate rows: 0
+
+Class counts:
+type
+backdoor      5000
+injection     3643
+password      3184
+ddos          3053
+ransomware    2774
+xss            594
+normal         589
+scanning       529
+
+Class share (%):
+type
+backdoor      25.82
+injection     18.81
+password      16.44
+ddos          15.76
+ransomware    14.32
+xss            3.07
+normal         3.04
+scanning       2.73
+File: Train_Test_IoT_Motion_Light_clean.csv
+Rows: 25830  Columns: 7
+
+Column names and types:
+date             object
+time             object
+motion_status     int64
+light_status     object
+label             int64
+type             object
+device           object
+
+Missing values (only columns with any):
+none
+
+Duplicate rows: 0
+
+Class counts:
+type
+ddos          4794
+backdoor      4577
+password      4565
+injection     4203
+normal        3449
+ransomware    2040
+scanning      1765
+xss            437
+
+Class share (%):
+type
+ddos          18.56
+backdoor      17.72
+password      17.67
+injection     16.27
+normal        13.35
+ransomware     7.90
+scanning       6.83
+xss            1.69
+File: Train_Test_IoT_Thermostat_clean.csv
+Rows: 32350  Columns: 7
+
+Column names and types:
+date                    object
+time                    object
+current_temperature    float64
+thermostat_status        int64
+label                    int64
+type                    object
+device                  object
+
+Missing values (only columns with any):
+none
+
+Duplicate rows: 0
+
+Class counts:
+type
+normal        14586
+backdoor       5000
+password       5000
+injection      4993
+ransomware     2261
+xss             449
+scanning         61
+
+Class share (%):
+type
+normal        45.09
+backdoor      15.46
+password      15.46
+injection     15.43
+ransomware     6.99
+xss            1.39
+scanning       0.19
