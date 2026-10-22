@@ -78,7 +78,16 @@ class PlaceholderDefender:
             temp = data["temperature"]
             jumped = self._prev_temp is not None and abs(temp - self._prev_temp) > JUMP_C
             hot = temp > HOT_C
-            self._prev_temp = temp
+            if event.origin == "device":
+                # Only a REAL device reading moves the baseline forward. If an
+                # attacker-forged reading were allowed to update _prev_temp, the
+                # very next legitimate reading would be compared against the
+                # forged value and falsely flagged as an "impossible jump" --
+                # that's the cascading false-positive bug found in Sprint 2
+                # benchmarking (28-50% FPR on temp-based attacks, vs ~0% on
+                # lock_replay/cmd_inject). Fixed by scoping the baseline update
+                # to legitimate (device-origin) readings only.
+                self._prev_temp = temp
             verdict.flagged = hot or jumped
             target = ACTION_TARGET["safe_mode"]
             fan_state = self.latest.get(target, {}).get("state")
