@@ -24,7 +24,7 @@ def replay_attack(base_timestamp, delays_seconds, action="unlock", source="dashb
         "timestamp": base_timestamp,
         "action": action,
         "source": source,
-        "attack_type": "none"
+        "attack_type": "normal"
     })
     for delay in delays_seconds:
         replay_time = base_timestamp + pd.Timedelta(seconds=delay)
@@ -43,7 +43,7 @@ def drift_attack(data, step_per_tick, start_row, num_rows):
     step_per_tick: 0.1 to 0.5 degrees C added per row
     """
     out = data.copy()
-    out["attack_type"] = "none"
+    out["attack_type"] = "normal"
     for i in range(num_rows):
         row_idx = start_row + i
         if row_idx >= len(out):
