@@ -1,0 +1,231 @@
+{
+  "bias_positive": {
+    "parameters": {
+      "target": "temperature",
+      "offset_c": 5
+    },
+    "attacked_rows": 100,
+    "examples": [
+      {
+        "home_id": "mn61",
+        "date": "2019-05-08",
+        "time": "00:42:00.633002",
+        "sensor": "KitchenATemperature",
+        "state": 28.0,
+        "timestamp": "2019-05-08T00:42:00.633",
+        "attack_type": "bias",
+        "humidity": 48.0
+      },
+      {
+        "home_id": "mn61",
+        "date": "2019-05-08",
+        "time": "01:41:30.560987",
+        "sensor": "KitchenATemperature",
+        "state": 27.0,
+        "timestamp": "2019-05-08T01:41:30.560",
+        "attack_type": "bias",
+        "humidity": 48.0
+      },
+      {
+        "home_id": "mn61",
+        "date": "2019-05-08",
+        "time": "02:50:55.403688",
+        "sensor": "KitchenATemperature",
+        "state": 26.5,
+        "timestamp": "2019-05-08T02:50:55.403",
+        "attack_type": "bias",
+        "humidity": 48.0
+      }
+    ]
+  },
+  "bias_negative": {
+    "parameters": {
+      "target": "temperature",
+      "offset_c": -5
+    },
+    "attacked_rows": 100,
+    "examples": [
+      {
+        "home_id": "mn61",
+        "date": "2019-05-08",
+        "time": "00:42:00.633002",
+        "sensor": "KitchenATemperature",
+        "state": 18.0,
+        "timestamp": "2019-05-08T00:42:00.633",
+        "attack_type": "bias",
+        "humidity": 48.0
+      },
+      {
+        "home_id": "mn61",
+        "date": "2019-05-08",
+        "time": "01:41:30.560987",
+        "sensor": "KitchenATemperature",
+        "state": 17.0,
+        "timestamp": "2019-05-08T01:41:30.560",
+        "attack_type": "bias",
+        "humidity": 48.0
+      },
+      {
+        "home_id": "mn61",
+        "date": "2019-05-08",
+        "time": "02:50:55.403688",
+        "sensor": "KitchenATemperature",
+        "state": 16.5,
+        "timestamp": "2019-05-08T02:50:55.403",
+        "attack_type": "bias",
+        "humidity": 48.0
+      }
+    ]
+  },
+  "motion_frozen": {
+    "parameters": {
+      "target": "motion",
+      "value": false
+    },
+    "attacked_rows": 100,
+    "examples": [
+      {
+        "home_id": "mn61",
+        "date": "2019-05-03",
+        "time": "05:00:40.419106",
+        "sensor": "Kitchen",
+        "state": false,
+        "timestamp": "2019-05-03T05:00:40.419",
+        "attack_type": "stuck_at_frozen"
+      },
+      {
+        "home_id": "mn61",
+        "date": "2019-05-03",
+        "time": "05:00:42.103136",
+        "sensor": "Kitchen",
+        "state": false,
+        "timestamp": "2019-05-03T05:00:42.103",
+        "attack_type": "stuck_at_frozen"
+      },
+      {
+        "home_id": "mn61",
+        "date": "2019-05-03",
+        "time": "05:00:42.342243",
+        "sensor": "Kitchen",
+        "state": false,
+        "timestamp": "2019-05-03T05:00:42.342",
+        "attack_type": "stuck_at_frozen"
+      }
+    ]
+  },
+  "motion_single": {
+    "parameters": {
+      "target": "motion",
+      "value": false
+    },
+    "attacked_rows": 1,
+    "examples": [
+      {
+        "home_id": "mn61",
+        "date": "2019-05-03",
+        "time": "05:00:40.419106",
+        "sensor": "Kitchen",
+        "state": false,
+        "timestamp": "2019-05-03T05:00:40.419",
+        "attack_type": "stuck_at_single"
+      }
+    ]
+  },
+  "spoof": {
+    "parameters": {
+      "target": "temperature",
+      "range_c": [
+        10,
+        50
+      ],
+      "seed": 42
+    },
+    "attacked_rows": 100,
+    "examples": [
+      {
+        "home_id": "mn61",
+        "date": "2019-05-08",
+        "time": "00:42:00.633002",
+        "sensor": "KitchenATemperature",
+        "state": 35.6,
+        "timestamp": "2019-05-08T00:42:00.633",
+        "attack_type": "spoof",
+        "humidity": 48.0
+      },
+      {
+        "home_id": "mn61",
+        "date": "2019-05-08",
+        "time": "01:41:30.560987",
+        "sensor": "KitchenATemperature",
+        "state": 11.0,
+        "timestamp": "2019-05-08T01:41:30.560",
+        "attack_type": "spoof",
+        "humidity": 48.0
+      },
+      {
+        "home_id": "mn61",
+        "date": "2019-05-08",
+        "time": "02:50:55.403688",
+        "sensor": "KitchenATemperature",
+        "state": 21.0,
+        "timestamp": "2019-05-08T02:50:55.403",
+        "attack_type": "spoof",
+        "humidity": 48.0
+      }
+    ]
+  },
+  "inject_unlock": {
+    "parameters": {
+      "target": "lock_1",
+      "action": "unlock"
+    },
+    "attacked_rows": 1,
+    "examples": [
+      {
+        "timestamp": "2019-05-03T05:01:43.952",
+        "component_id": "lock_1",
+        "topic": "building/lock_1/commands",
+        "action": "unlock",
+        "source": "dashboard",
+        "payload": "{\"action\": \"unlock\", \"source\": \"dashboard\"}",
+        "attack_type": "cmd_inject"
+      }
+    ]
+  },
+  "inject_lock": {
+    "parameters": {
+      "target": "lock_1",
+      "action": "lock"
+    },
+    "attacked_rows": 1,
+    "examples": [
+      {
+        "timestamp": "2019-05-03T05:01:43.952",
+        "component_id": "lock_1",
+        "topic": "building/lock_1/commands",
+        "action": "lock",
+        "source": "dashboard",
+        "payload": "{\"action\": \"lock\", \"source\": \"dashboard\"}",
+        "attack_type": "cmd_inject"
+      }
+    ]
+  },
+  "inject_safe_mode": {
+    "parameters": {
+      "target": "fan_1",
+      "action": "safe_mode"
+    },
+    "attacked_rows": 1,
+    "examples": [
+      {
+        "timestamp": "2019-05-03T05:00:40.419",
+        "component_id": "fan_1",
+        "topic": "building/fan_1/commands",
+        "action": "safe_mode",
+        "source": "dashboard",
+        "payload": "{\"action\": \"safe_mode\", \"source\": \"dashboard\"}",
+        "attack_type": "cmd_inject"
+      }
+    ]
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "dataset": "BCCC-IoT-IDS-Zwave-2025",
+  "status": "measured",
+  "checked_on": "2026-10-22",
+  "csv_files_profiled": 246,
+  "scope": "All CSV members of IP-files.zip and Z-wave-files.zip; JSON and PCAP records were not analysed",
+  "aggregation": "IP flows, Z-Wave flows and Z-Wave packets are reported separately. Their rows are not unique events and must not be added as a count of unique exchanges.",
+  "representations": {
+    "ip_flows": {
+      "files_profiled": 40,
+      "row_count": 16236922,
+      "column_count": 347,
+      "column_order_variants": 1,
+      "classification_available": true,
+      "missing_cells": 292546810,
+      "benign_rows": 1506,
+      "attack_rows": 16235416,
+      "unknown_rows": 0,
+      "unlabelled_rows": 0,
+      "benign_to_attack_ratio": 9.276017319174328e-05,
+      "profile": "ip_flows/profile.json"
+    },
+    "zwave_flows": {
+      "files_profiled": 103,
+      "row_count": 218918,
+      "column_count": 346,
+      "column_order_variants": 1,
+      "classification_available": true,
+      "missing_cells": 4059652,
+      "benign_rows": 218918,
+      "attack_rows": 0,
+      "unknown_rows": 0,
+      "unlabelled_rows": 0,
+      "benign_to_attack_ratio": null,
+      "profile": "zwave_flows/profile.json"
+    },
+    "zwave_packets": {
+      "files_profiled": 103,
+      "row_count": 21930841,
+      "column_count": 18,
+      "column_order_variants": 6,
+      "classification_available": false,
+      "missing_cells": 164119408,
+      "benign_rows": 0,
+      "attack_rows": 0,
+      "unknown_rows": 0,
+      "unlabelled_rows": 21930841,
+      "benign_to_attack_ratio": null,
+      "profile": "zwave_packets/profile.json"
+    }
+  },
+  "limitations": [
+    "Every released Z-Wave flow row has label Benign. This does not establish that the wider dataset contains no attacks.",
+    "The Z-Wave packet CSVs have no attack label column. Their benign/attack counts and ratio cannot be established from these CSVs.",
+    "Missing cells are counted using the documented tokens. Structural absence is not automatically an erroneous reading."
+  ]
+}

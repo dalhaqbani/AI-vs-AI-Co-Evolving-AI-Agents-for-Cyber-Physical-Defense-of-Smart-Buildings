@@ -1,0 +1,46 @@
+{
+  "checked_on": "2026-10-22",
+  "gotham": {
+    "url": "https://zenodo.org/records/14502760",
+    "archive": "GothamDataset2025.zip",
+    "scope": "Every processed/*.csv member; raw PCAPs excluded",
+    "download_method": "HTTP byte ranges for the CSV members and ZIP central directory",
+    "integrity": "Each processed CSV was decompressed through zipfile, which checks its ZIP CRC. The full original archive MD5 was not verified because the raw PCAP ranges were not downloaded.",
+    "archive_md5_publisher": "7ca78c0517ccb3d2854e823678e0f206",
+    "manifest": "gotham_2025/source_manifest.csv"
+  },
+  "bccc": {
+    "url": "https://www.yorku.ca/research/bccc/ucs-technical/cybersecurity-datasets-cds/large-scale-iot-zwave-intrusion-detection-dataset-bccc-iot-ids-zwave-2025/",
+    "download_directory": "http://bccc.laps.yorku.ca/BCCC-IoTIDS-ZWave-2025/CSVs/",
+    "status": "All 246 CSV members in the two dedicated CSV archives measured; PCAP-area sources documented separately",
+    "archives": [
+      {
+        "url": "http://bccc.laps.yorku.ca/BCCC-IoTIDS-ZWave-2025/CSVs/IP-files.zip",
+        "bytes": 3037856415,
+        "etag": "\"b512029f-6391aa132e937\"",
+        "last_modified": "Fri, 04 Jul 2025 13:39:56 GMT",
+        "csv_members": 40
+      },
+      {
+        "url": "http://bccc.laps.yorku.ca/BCCC-IoTIDS-ZWave-2025/CSVs/Z-wave-files.zip",
+        "bytes": 1381338089,
+        "etag": "\"52558be9-6391a884146d2\"",
+        "last_modified": "Fri, 04 Jul 2025 13:32:58 GMT",
+        "csv_members": 206
+      }
+    ],
+    "download_method": "HTTP byte ranges covering every CSV member and the ZIP central directories",
+    "integrity": "Every complete CSV member was decompressed through Python zipfile and its ZIP CRC checked. Whole original archive checksums were not compared with a publisher checksum.",
+    "excluded_from_analysis": [
+      "JSON members",
+      "PCAP files"
+    ],
+    "manifest": "bccc_iot_ids_zwave_2025/source_manifest.csv",
+    "profiles": [
+      "bccc_iot_ids_zwave_2025/ip_flows/profile.json",
+      "bccc_iot_ids_zwave_2025/zwave_flows/profile.json",
+      "bccc_iot_ids_zwave_2025/zwave_packets/profile.json"
+    ],
+    "pcap_attack_inventory": "bccc_iot_ids_zwave_2025/pcap_attack_inventory.json"
+  }
+}

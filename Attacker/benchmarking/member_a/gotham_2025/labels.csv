@@ -1,0 +1,19 @@
+label,rows
+TCP Scan,737764
+Telnet Brute Force,227649
+Benign,12256883
+Unknown,7670
+Ingress Tool Transfer,21587
+File Download,7196
+Reporting,450
+C&C Communication,528
+Mirai UDP Flooding,8897895
+Mirai C&C Communication,1074
+Mirai TCP Flooding,6548173
+Mirai GRE Flooding,5911401
+Merlin TCP Flooding,120000
+Merlin C&C Communication,29356
+Merlin ICMP Flooding,57580
+Merlin UDP Flooding,29996
+UDP Scan,4242
+CoAP Amplification,274837

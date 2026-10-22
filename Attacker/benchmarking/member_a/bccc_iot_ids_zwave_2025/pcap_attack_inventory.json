@@ -1,0 +1,57 @@
+{
+  "checked_on": "2026-10-22",
+  "scope": "Supplementary PCAP directory archive inventories. These files are outside the 246 CSVs measured in the main benchmark.",
+  "mqtt": {
+    "archive": "http://bccc.laps.yorku.ca/BCCC-IoTIDS-ZWave-2025/PCAPs/MQTT-HomeAssistant-servers-(switch-traffic)/Attacks.zip",
+    "evidence": "Attack scenario folder names from the ZIP central directory, not row labels",
+    "scenario_folders": [
+      "connect-disconnect-flood",
+      "encoded-payload-flood",
+      "mqtt-bruteforce",
+      "ping-req-flood",
+      "publish-subscribe-flood",
+      "slow-publish",
+      "unvalid-publish-flood",
+      "unvalid-subscribe-flood",
+      "valid-publish-flood",
+      "very-large-message-flood",
+      "wildcard-subscribe-flood"
+    ]
+  },
+  "hub_ip": {
+    "directory": "http://bccc.laps.yorku.ca/BCCC-IoTIDS-ZWave-2025/PCAPs/Zwave-Hub-IP/",
+    "archive_groups": [
+      "Botnet",
+      "BruteForce",
+      "HTTP-based-DDoS",
+      "TCP-based-DDoS",
+      "Information-Gathering",
+      "WebSocket"
+    ],
+    "sample_verified_row_labels": [
+      {
+        "archive": "http://bccc.laps.yorku.ca/BCCC-IoTIDS-ZWave-2025/PCAPs/Zwave-Hub-IP/CSVs.zip",
+        "member": "CSVs/AVB-FiberFox/z-way-me.pcap8533.csv",
+        "label": "AVB-FiberFox"
+      },
+      {
+        "archive": "http://bccc.laps.yorku.ca/BCCC-IoTIDS-ZWave-2025/PCAPs/Zwave-Hub-IP/CSVs.zip",
+        "member": "CSVs/STRESS-FiberFox/z-way-me.pcap7889.csv",
+        "label": "STRESS-FiberFox"
+      },
+      {
+        "archive": "http://bccc.laps.yorku.ca/BCCC-IoTIDS-ZWave-2025/PCAPs/Zwave-Hub-IP/CSVs.zip",
+        "member": "CSVs/TCP-based-DDoS/ACK-Flood-hping3/ack-flood-hping3.csv",
+        "label": "ACK-Flood-hping3"
+      }
+    ],
+    "additional_csv_members_in_CSVs_zip": 340,
+    "other_sample": {
+      "archive": "http://bccc.laps.yorku.ca/BCCC-IoTIDS-ZWave-2025/PCAPs/Zwave-Hub-IP/csv-mqtt-z-wave-pcaps.zip",
+      "member": "csv-mqtt-z-wave-pcaps/z-way-me.pcap4791.csv",
+      "label": "Z-wave",
+      "interpretation": "Broad label in one inspected row, not a specific attack type"
+    }
+  },
+  "limits": "Only selected CSV rows were inspected in these supplementary archives. Their total rows, missing cells, class ratios and full label inventory were not calculated. Folder names must not be used as per-row labels or added to the benchmark counts."
+}

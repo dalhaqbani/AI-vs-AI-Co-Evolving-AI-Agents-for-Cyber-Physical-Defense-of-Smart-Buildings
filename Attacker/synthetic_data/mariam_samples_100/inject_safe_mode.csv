@@ -1,0 +1,2 @@
+timestamp,component_id,topic,action,source,payload,attack_type
+2019-05-03 05:00:40.419106,fan_1,building/fan_1/commands,safe_mode,dashboard,"{""action"": ""safe_mode"", ""source"": ""dashboard""}",cmd_inject
